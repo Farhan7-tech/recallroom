@@ -39,12 +39,12 @@ class RoomLookupTest {
 
     @Test
     void agentReportsMustComeFromThatAgentsOwnSwitchId() {
-        assertThat(RecallService.fromAgent(msg("@switch-agent-acdd6087:localhost", "store-runner", null), "store-runner")).isTrue();
+        assertThat(RecallService.looksLikeAgent(msg("@switch-agent-acdd6087:localhost", "store-runner", null), "store-runner")).isTrue();
         // a person who renamed themselves "store-runner" on Telegram
-        assertThat(RecallService.fromAgent(msg("@switch-telegram-5aca-mohd:localhost", "store-runner", null), "store-runner")).isFalse();
+        assertThat(RecallService.looksLikeAgent(msg("@switch-telegram-5aca-mohd:localhost", "store-runner", null), "store-runner")).isFalse();
         // another agent, or any agent speaking for someone else
-        assertThat(RecallService.fromAgent(msg("@switch-agent-99:localhost", "comms", null), "store-runner")).isFalse();
-        assertThat(RecallService.fromAgent(msg("@switch-agent-acdd6087:localhost", "store-runner", "@x"), "store-runner")).isFalse();
+        assertThat(RecallService.looksLikeAgent(msg("@switch-agent-99:localhost", "comms", null), "store-runner")).isFalse();
+        assertThat(RecallService.looksLikeAgent(msg("@switch-agent-acdd6087:localhost", "store-runner", "@x"), "store-runner")).isFalse();
     }
 
     private static RoomMessage msg(String sender, String name, String onBehalfOf) {

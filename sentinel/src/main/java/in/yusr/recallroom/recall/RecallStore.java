@@ -7,6 +7,7 @@ import tools.jackson.databind.SerializationFeature;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.io.IOException;
+import java.io.Reader;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -15,8 +16,11 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Properties;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -114,6 +118,30 @@ public class RecallStore {
 
     public void saveLogDocumentId(String id) {
         write(dataDir.resolve("recall-log-document-id"), id);
+    }
+
+    /** Helper agent name to the Switch sender id it is pinned to (data/agent-ids.properties, editable by the operator). */
+    public synchronized Map<String, String> agentIds() {
+        Path file = dataDir.resolve("agent-ids.properties");
+        Properties p = new Properties();
+        if (Files.exists(file)) {
+            try (Reader in = Files.newBufferedReader(file)) {
+                p.load(in);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+        Map<String, String> out = new TreeMap<>();
+        p.forEach((k, v) -> out.put(k.toString(), v.toString()));
+        return out;
+    }
+
+    public synchronized void pinAgentId(String agentName, String senderId) {
+        Map<String, String> ids = new TreeMap<>(agentIds());
+        ids.putIfAbsent(agentName, senderId);
+        StringBuilder text = new StringBuilder("# Switch sender id each helper agent is pinned to. Delete a line to re-pin it.\n");
+        ids.forEach((k, v) -> text.append(k).append('=').append(v.replace(":", "\\:")).append('\n'));
+        write(dataDir.resolve("agent-ids.properties"), text.toString());
     }
 
     private static void write(Path file, String content) {

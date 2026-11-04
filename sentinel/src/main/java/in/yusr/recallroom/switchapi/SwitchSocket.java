@@ -144,6 +144,7 @@ public class SwitchSocket {
                         }
                     });
                 }
+                case "room_join" -> handlers.submit(onConnected); // invited somewhere new: look the rooms up again
                 case "evicted" -> {
                     String code = data.path("code").asString("");
                     log.warn("Switch evicted this connection: {} {}", code, data.path("reason").asString(""));

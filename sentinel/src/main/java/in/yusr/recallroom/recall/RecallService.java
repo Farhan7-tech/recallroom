@@ -64,8 +64,11 @@ public class RecallService {
         this.openFda = openFda;
     }
 
-    /** Runs on every (re)connect: find the HQ room and bind this connection to it for the log document. */
-    public void onConnected() {
+    /**
+     * Runs on every (re)connect and room join: find the HQ room and bind this connection to it,
+     * which room-scoped operations such as the log document need.
+     */
+    public synchronized void onConnected() {
         findRoom(props.rooms().hq()).ifPresentOrElse(id -> {
             hqRoomId = id;
             api.op("connect_to_room", Map.of("room_id", id, "include_general_instructions", false));
@@ -420,8 +423,26 @@ public class RecallService {
         return hits.size() == 1 ? Optional.of(hits.get(0)) : Optional.empty();
     }
 
-    /** Agents' Switch ids start "@switch-agent-"; people's come from their messaging app, so a renamed person can't pass. */
-    static boolean fromAgent(RoomMessage m, String agentName) {
+    /**
+     * Whether a message really comes from the named helper agent. Agents' Switch ids start
+     * "@switch-agent-" while people's come from their messaging app, so a renamed person never
+     * passes; and the first id seen for each agent is pinned, so a second agent given the same
+     * display name later doesn't either.
+     */
+    private boolean fromAgent(RoomMessage m, String agentName) {
+        if (!looksLikeAgent(m, agentName)) {
+            return false;
+        }
+        String pinned = store.agentIds().get(agentName);
+        if (pinned == null) {
+            store.pinAgentId(agentName, m.sender());
+            log.info("Pinned {} to Switch id {}", agentName, m.sender());
+            return true;
+        }
+        return pinned.equals(m.sender());
+    }
+
+    static boolean looksLikeAgent(RoomMessage m, String agentName) {
         return m.onBehalfOf() == null
                 && m.sender() != null && m.sender().startsWith("@switch-agent-")
                 && agentName.equalsIgnoreCase(m.senderName());

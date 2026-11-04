@@ -44,10 +44,27 @@ public class RecallStore {
         this.json = json.rebuild().enable(SerializationFeature.INDENT_OUTPUT).build();
     }
 
+    /**
+     * R-YYYYMMDD-N, never reused: the last id is kept apart from the recall records, so clearing
+     * them (deploy/reset-demo.sh) does not hand agents, who remember the room, an id they have seen.
+     */
     public synchronized String nextId() {
         String prefix = "R-" + LocalDate.now().format(DAY) + "-";
-        int n = (int) all().stream().filter(r -> r.id.startsWith(prefix)).count() + 1;
-        return prefix + n;
+        Path counter = dataDir.resolve("last-recall-id");
+        int last = (int) all().stream().filter(r -> r.id.startsWith(prefix)).count();
+        try {
+            if (Files.exists(counter)) {
+                String previous = Files.readString(counter).trim();
+                if (previous.startsWith(prefix)) {
+                    last = Math.max(last, Integer.parseInt(previous.substring(prefix.length())));
+                }
+            }
+        } catch (IOException | NumberFormatException e) {
+            // an unreadable counter only means we fall back to counting records
+        }
+        String id = prefix + (last + 1);
+        write(counter, id);
+        return id;
     }
 
     public synchronized void save(Recall recall) {

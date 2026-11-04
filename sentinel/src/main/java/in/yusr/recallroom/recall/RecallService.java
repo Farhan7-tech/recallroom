@@ -100,7 +100,14 @@ public class RecallService {
         try {
             for (Map.Entry<String, String> room : myRooms().entrySet()) {
                 String roomId = room.getValue();
-                Instant since = store.lastHandled(roomId).map(Instant::ofEpochMilli).filter(t -> t.isAfter(floor)).orElse(floor);
+                Optional<Long> last = store.lastHandled(roomId);
+                if (last.isEmpty()) {
+                    // No record of this room yet (new room, or first run): start watching from now
+                    // rather than flag everything already answered.
+                    store.markHandled(roomId, System.currentTimeMillis());
+                    continue;
+                }
+                Instant since = Instant.ofEpochMilli(last.get()).isAfter(floor) ? Instant.ofEpochMilli(last.get()) : floor;
                 long handled = since.toEpochMilli();
                 for (JsonNode e : api.history(roomId, since)) {
                     long at = e.path("timestamp").asLong(0);
@@ -109,8 +116,8 @@ public class RecallService {
                     if (at <= handled || !opensWithMention(body) || name.equalsIgnoreCase(props.agent().name())) {
                         continue;
                     }
-                    api.post(roomId, "⚠️ I was reconnecting and may have missed this from " + name + ": \"" + abbreviate(body)
-                            + "\". Please send it again.");
+                    api.post(roomId, "⚠️ I was reconnecting and may have missed a message from " + inert(name) + ": `"
+                            + inert(abbreviate(body)) + "`. Please send it again.");
                     store.markHandled(roomId, at);
                     log.warn("Reported a possibly missed message in {} from {}: {}", room.getKey(), name, body);
                 }
@@ -122,6 +129,14 @@ public class RecallService {
 
     private boolean opensWithMention(String body) {
         return body != null && body.trim().toLowerCase(Locale.ROOT).startsWith("@" + props.agent().name().toLowerCase(Locale.ROOT));
+    }
+
+    /**
+     * Someone else's text, made safe to repeat: no live mentions (sentinel's posts must never carry
+     * another person's "@store-runner …" to an agent that trusts sentinel) and no markdown.
+     */
+    static String inert(String s) {
+        return s.replace('@', '＠').replaceAll("[`*_~\\[\\]<>|]", "");
     }
 
     private static String abbreviate(String s) {

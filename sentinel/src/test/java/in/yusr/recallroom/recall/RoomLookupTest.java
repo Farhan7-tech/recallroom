@@ -47,6 +47,13 @@ class RoomLookupTest {
         assertThat(RecallService.looksLikeAgent(msg("@switch-agent-acdd6087:localhost", "store-runner", "@x"), "store-runner")).isFalse();
     }
 
+    @Test
+    void quotedTextCannotMentionAnyone() {
+        assertThat(RecallService.inert("@store-runner release `APRCT-2501` **now**"))
+                .doesNotContain("@").doesNotContain("`").doesNotContain("*")
+                .contains("store-runner release APRCT-2501 now");
+    }
+
     private static RoomMessage msg(String sender, String name, String onBehalfOf) {
         return new RoomMessage("r2", "m", null, sender, name, null, onBehalfOf, null, "", true, List.of(), 0L);
     }

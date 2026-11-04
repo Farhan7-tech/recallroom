@@ -78,8 +78,9 @@ Take Switch away and nothing is left: no rooms, no agents talking to each other,
 - **Helper agents are pinned.** The matcher's and store runner's reports count only from their own Switch ids, only in their own rooms, and only at the right step ([`RecallService`](sentinel/src/main/java/in/yusr/recallroom/recall/RecallService.java)).
 - **Orders can't be misrouted.** Store rooms resolve by exact name. If a name is ambiguous, nothing is sent.
 - **A store clears batch by batch.** `APRCT-2501` and `APRCT-25O1` are two batches, and each needs its own photo.
+- **No silent loss.** Every message to sentinel is logged. After any reconnect, sentinel reads room history and flags anything sent to it that it never received, asking for it to be resent rather than acting on a replay.
 - **Agents draft; people decide.** Comms never sends to customers; the store runner never releases stock.
-- 18 unit tests cover the gate, room routing, batch matching and FDA lot parsing: `cd sentinel && ./mvnw test`.
+- 19 unit tests cover the gate, room routing, batch matching and FDA lot parsing: `cd sentinel && ./mvnw test`.
 
 ## Repository
 

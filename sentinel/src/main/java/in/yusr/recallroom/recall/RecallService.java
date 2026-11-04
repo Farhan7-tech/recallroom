@@ -22,6 +22,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -53,6 +57,8 @@ public class RecallService {
     private volatile String hqRoomId;
     private volatile String logDocumentId;
     private volatile Instant lastPoll = Instant.EPOCH;
+    private final ScheduledExecutorService logTimer = Executors.newSingleThreadScheduledExecutor();
+    private ScheduledFuture<?> pendingLogRefresh;
 
     public RecallService(SentinelProperties props, SwitchApi api, RecallStore store, ApprovalGate gate,
                          CdscoClient cdsco, OpenFdaClient openFda) {
@@ -113,8 +119,11 @@ public class RecallService {
      * such as "Sep-2026", or "openfda [days]". Asked for by a person, every flagged batch goes to the
      * matcher; on the automatic poll only batches it has not raised before do.
      */
-    void scan(String roomId, String what, boolean everything) {
-        String w = what.toLowerCase(Locale.ROOT);
+    void scan(String roomId, String what, boolean asked) {
+        String w = what.toLowerCase(Locale.ROOT).trim();
+        boolean again = w.endsWith(" again") || w.equals("again");
+        w = w.replaceAll("\\s*\\bagain$", "").trim();
+        what = what.trim().replaceAll("(?i)\\s*\\bagain$", "").trim();
         List<FlaggedBatch> batches;
         String source;
         if (w.startsWith("openfda")) {
@@ -130,15 +139,23 @@ public class RecallService {
             batches = cdsco.fetchMonth(month.get());
             source = "CDSCO Not-of-Standard-Quality and spurious drug list, " + month.get().format(MONTH);
         }
-        if (!everything) {
-            Set<String> seen = store.seen();
-            batches = batches.stream().filter(b -> !seen.contains(RecallStore.seenKey(b))).toList();
-        }
         if (batches.isEmpty()) {
-            if (everything) {
-                api.post(roomId, "Nothing flagged in " + source + ". No recall opened.");
+            if (asked) {
+                api.post(roomId, "Nothing flagged in " + source + " (it may not be published yet). No recall opened.");
             }
             return;
+        }
+        if (!again) {
+            Set<String> seen = store.seen();
+            List<FlaggedBatch> fresh = batches.stream().filter(b -> !seen.contains(RecallStore.seenKey(b))).toList();
+            if (fresh.isEmpty()) {
+                if (asked) {
+                    api.post(roomId, "Every batch in " + source + " is already covered by an earlier recall (`@"
+                            + props.agent().name() + " status` shows which). Add `again` to open a new recall anyway.");
+                }
+                return;
+            }
+            batches = fresh;
         }
         Recall recall = new Recall();
         recall.id = store.nextId();
@@ -388,7 +405,17 @@ public class RecallService {
 
     private void save(Recall recall) {
         store.save(recall);
-        refreshLog();
+        scheduleLogRefresh();
+    }
+
+    /**
+     * Each document update shows as a notice in the room, so changes within a few seconds of each
+     * other go out as one update.
+     */
+    private synchronized void scheduleLogRefresh() {
+        if (pendingLogRefresh == null || pendingLogRefresh.isDone()) {
+            pendingLogRefresh = logTimer.schedule(this::refreshLog, 20, TimeUnit.SECONDS);
+        }
     }
 
     /** Creates the recall-log document in HQ the first time, then rewrites it. Only its author can update it. */

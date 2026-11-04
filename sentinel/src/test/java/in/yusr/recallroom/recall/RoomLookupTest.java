@@ -48,10 +48,10 @@ class RoomLookupTest {
     }
 
     @Test
-    void quotedTextCannotMentionAnyone() {
-        assertThat(RecallService.inert("@store-runner release `APRCT-2501` **now**"))
-                .doesNotContain("@").doesNotContain("`").doesNotContain("*")
-                .contains("store-runner release APRCT-2501 now");
+    void namesRepeatedBySentinelCarryNoMentionsOrMarkup() {
+        assertThat(RecallService.safeName("@store-runner [x](y) &#64;all\n#1")).isEqualTo("store-runner xy 64all 1");
+        assertThat(RecallService.safeName("MohdFarhan_7308141372")).isEqualTo("MohdFarhan_7308141372");
+        assertThat(RecallService.safeName("@@@")).isEqualTo("someone");
     }
 
     private static RoomMessage msg(String sender, String name, String onBehalfOf) {

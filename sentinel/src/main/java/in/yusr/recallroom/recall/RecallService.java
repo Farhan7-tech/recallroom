@@ -40,6 +40,7 @@ public class RecallService {
 
     private static final Logger log = LoggerFactory.getLogger(RecallService.class);
     private static final DateTimeFormatter MONTH = DateTimeFormatter.ofPattern("MMM-yyyy", Locale.ENGLISH);
+    private static final DateTimeFormatter HH_MM = DateTimeFormatter.ofPattern("HH:mm").withZone(java.time.ZoneId.of("Asia/Kolkata"));
     private static final String ID = "(R-\\d{8}-\\d+)";
     private static final Pattern APPROVE = Pattern.compile("(?i)\\bapprove\\s+" + ID);
     private static final Pattern MATCHED = Pattern.compile("(?i)\\bmatched\\s+" + ID);
@@ -116,8 +117,8 @@ public class RecallService {
                     if (at <= handled || !opensWithMention(body) || name.equalsIgnoreCase(props.agent().name())) {
                         continue;
                     }
-                    api.post(roomId, "⚠️ I was reconnecting and may have missed a message from " + inert(name) + ": `"
-                            + inert(abbreviate(body)) + "`. Please send it again.");
+                    api.post(roomId, "⚠️ I was reconnecting and may have missed a message to me from " + safeName(name) + " at "
+                            + HH_MM.format(Instant.ofEpochMilli(at)) + " IST. Please send it again.");
                     store.markHandled(roomId, at);
                     log.warn("Reported a possibly missed message in {} from {}: {}", room.getKey(), name, body);
                 }
@@ -132,16 +133,14 @@ public class RecallService {
     }
 
     /**
-     * Someone else's text, made safe to repeat: no live mentions (sentinel's posts must never carry
-     * another person's "@store-runner …" to an agent that trusts sentinel) and no markdown.
+     * A display name reduced to letters, digits, spaces and . _ - (at most 40). Sentinel never
+     * repeats anyone's message text: its posts must not carry another person's mentions or markup
+     * to agents that trust sentinel.
      */
-    static String inert(String s) {
-        return s.replace('@', '＠').replaceAll("[`*_~\\[\\]<>|]", "");
-    }
-
-    private static String abbreviate(String s) {
-        String one = s.replaceAll("\\s+", " ").trim();
-        return one.length() > 100 ? one.substring(0, 100) + "…" : one;
+    static String safeName(String name) {
+        String s = name == null ? "" : name.replaceAll("\\s+", " ").replaceAll("[^\\p{L}\\p{N} ._-]", "").replaceAll(" +", " ").trim();
+        s = s.length() > 40 ? s.substring(0, 40) : s;
+        return s.isEmpty() ? "someone" : s;
     }
 
     public void onMessage(RoomMessage m) {

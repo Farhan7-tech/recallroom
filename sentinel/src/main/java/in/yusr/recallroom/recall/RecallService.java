@@ -174,6 +174,10 @@ public class RecallService {
     // ---- 2. the matcher reports what is on our shelves ---------------------------------------
 
     void matched(RoomMessage m, String id) {
+        if (!fromAgent(m, props.agents().matcher()) || !m.roomId().equals(hqRoomId)) {
+            api.post(m.roomId(), "Only @" + props.agents().matcher() + " reports matches, in the HQ room. Ignored.");
+            return;
+        }
         Optional<Recall> found = store.find(id);
         Optional<RecallStore.MatchFile> matches = store.readMatches(id);
         if (found.isEmpty() || matches.isEmpty()) {
@@ -181,6 +185,10 @@ public class RecallService {
             return;
         }
         Recall recall = found.get();
+        if (recall.state != Recall.State.MATCHING) {
+            api.post(m.roomId(), id + " is already past matching (" + RecallLog.label(recall.state) + "); its impact table can't change now.");
+            return;
+        }
         recall.stores.clear();
         for (RecallStore.StoreMatch s : matches.get().stores()) {
             if (s.lines() == null || s.lines().isEmpty()) {
@@ -246,10 +254,11 @@ public class RecallService {
         for (StoreOrder s : recall.stores.values()) {
             Optional<String> roomId = lookup(rooms, s.room);
             if (roomId.isEmpty()) {
-                recall.note("No room \"" + s.room + "\" for " + s.storeName + "; order not sent.");
+                recall.note("No single room named \"" + s.room + "\" for " + s.storeName + "; order not sent.");
                 continue;
             }
             api.post(roomId.get(), order(recall, s));
+            s.roomId = roomId.get();
             s.status = StoreOrder.Status.ORDERED;
             s.orderedAt = Instant.now();
             sent++;
@@ -282,6 +291,16 @@ public class RecallService {
         }
         Recall recall = found.get();
         StoreOrder s = recall.stores.get(storeId);
+        // Only the store runner, in the room the order went to, while the order is open.
+        if (!fromAgent(m, props.agents().storeRunner()) || !m.roomId().equals(s.roomId)) {
+            api.post(m.roomId(), "Only @" + props.agents().storeRunner() + " in " + s.storeName + "'s room can report on its order. Ignored.");
+            return;
+        }
+        if (recall.state != Recall.State.IN_STORES
+                || (s.status != StoreOrder.Status.ORDERED && s.status != StoreOrder.Status.RECHECK)) {
+            api.post(m.roomId(), "There is no open order for " + s.storeName + " in " + id + ".");
+            return;
+        }
         s.lastReport = details;
         String hq = hqRoomId != null ? hqRoomId : m.roomId();
         if (recheck) {
@@ -377,7 +396,11 @@ public class RecallService {
         return lookup(myRooms(), name);
     }
 
-    /** Exact name first, then a case-insensitive containment so "store-test" finds "Telegram stores: store-test". */
+    /**
+     * A room by its exact name, or by its exact title after a bridge prefix ("store-test" is
+     * "Telegram stores: store-test"). Never a partial match, and nothing when two rooms qualify:
+     * a stop-sale order must not land in the wrong store.
+     */
     static Optional<String> lookup(Map<String, String> rooms, String name) {
         if (name == null) {
             return Optional.empty();
@@ -385,11 +408,23 @@ public class RecallService {
         if (rooms.containsKey(name)) {
             return Optional.of(rooms.get(name));
         }
-        String n = name.toLowerCase(Locale.ROOT);
-        return rooms.entrySet().stream()
-                .filter(e -> e.getKey().toLowerCase(Locale.ROOT).contains(n))
+        String n = name.trim().toLowerCase(Locale.ROOT);
+        List<String> hits = rooms.entrySet().stream()
+                .filter(e -> {
+                    String key = e.getKey().toLowerCase(Locale.ROOT);
+                    int colon = key.lastIndexOf(": ");
+                    return key.equals(n) || (colon >= 0 && key.substring(colon + 2).equals(n));
+                })
                 .map(Map.Entry::getValue)
-                .findFirst();
+                .toList();
+        return hits.size() == 1 ? Optional.of(hits.get(0)) : Optional.empty();
+    }
+
+    /** Agents' Switch ids start "@switch-agent-"; people's come from their messaging app, so a renamed person can't pass. */
+    static boolean fromAgent(RoomMessage m, String agentName) {
+        return m.onBehalfOf() == null
+                && m.sender() != null && m.sender().startsWith("@switch-agent-")
+                && agentName.equalsIgnoreCase(m.senderName());
     }
 
     private static Optional<YearMonth> parseMonth(String s) {

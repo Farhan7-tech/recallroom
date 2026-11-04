@@ -15,6 +15,8 @@ public class StoreOrder {
     public String store;
     public String storeName;
     public String room;
+    /** The room the order was sent to; reports about this store count only from there. */
+    public String roomId;
     public Status status = Status.WAITING_APPROVAL;
     public List<Line> lines = new ArrayList<>();
     public Instant orderedAt;

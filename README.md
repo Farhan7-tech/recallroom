@@ -79,7 +79,7 @@ Take Switch away and nothing is left: no rooms, no agents talking to each other,
 - **Orders can't be misrouted.** Store rooms resolve by exact name. If a name is ambiguous, nothing is sent.
 - **A store clears batch by batch.** `APRCT-2501` and `APRCT-25O1` are two batches, and each needs its own photo.
 - **Agents draft; people decide.** Comms never sends to customers; the store runner never releases stock.
-- 17 unit tests cover the gate, room routing, batch matching and FDA lot parsing: `cd sentinel && ./mvnw test`.
+- 18 unit tests cover the gate, room routing, batch matching and FDA lot parsing: `cd sentinel && ./mvnw test`.
 
 ## Repository
 
@@ -123,6 +123,7 @@ git clone <this repo> ~/recallroom && cd ~/recallroom/sentinel && ./mvnw package
 |---|---|---|
 | `@sentinel scan latest` / `scan Sep-2026` / `scan openfda 30` | anyone in HQ | Opens a recall from that list. Add `again` to repeat a list that's already covered. |
 | `@sentinel approve R-…` | **QA Head only**, in HQ | Sends the stop-sale orders. |
+| `@sentinel accept R-… store=<id> <batch>` | **QA Head only**, in HQ | Settles a "probable" line, after the store runner asks for a recheck, as a typo in our stock records. |
 | `@sentinel status [R-…]` | anyone | Shows recalls and their stores. |
 | `@sentinel whoami` | anyone | Shows your Switch sender id. |
 | `@sentinel matched R-…` | matcher (pinned) | Hands over the impact table. |

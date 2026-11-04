@@ -51,6 +51,14 @@ class ApprovalGateTest {
     }
 
     @Test
+    void qaDecisionsOnAProbableLineNeedTheQaHeadInHqToo() {
+        assertThat(gate.checkQaDecision(message(QA_HEAD, "QA Head", null, HQ), HQ).allowed()).isTrue();
+        assertThat(gate.checkQaDecision(message("@switch-telegram-5aca-staff:localhost", "QA Head", null, HQ), HQ).allowed()).isFalse();
+        assertThat(gate.checkQaDecision(message(QA_HEAD, "QA Head", null, "room-store"), HQ).allowed()).isFalse();
+        assertThat(gate.checkQaDecision(message(QA_HEAD, "QA Head", "@switch-agent-x:localhost", HQ), HQ).allowed()).isFalse();
+    }
+
+    @Test
     void withNoQaHeadConfiguredNothingIsApproved() {
         ApprovalGate open = new ApprovalGate(new SentinelProperties(null, null, null, null, null, null, null, null));
 

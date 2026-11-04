@@ -39,6 +39,23 @@ public class ApprovalGate {
         return Decision.ALLOW;
     }
 
+    /**
+     * The same identity checks as an approval, for the QA Head's other decisions on a recall that
+     * is already out in stores (such as accepting a probable line as a stock-record typo).
+     */
+    public Decision checkQaDecision(RoomMessage message, String hqRoomId) {
+        if (message.onBehalfOf() != null) {
+            return Decision.refuse("it was posted by an agent on someone else's behalf");
+        }
+        if (!qaHeads.contains(message.sender())) {
+            return Decision.refuse("only the QA Head can decide this, and this account is not the QA Head's");
+        }
+        if (!message.roomId().equals(hqRoomId)) {
+            return Decision.refuse("QA decisions count only in the HQ room");
+        }
+        return Decision.ALLOW;
+    }
+
     public boolean configured() {
         return !qaHeads.isEmpty();
     }

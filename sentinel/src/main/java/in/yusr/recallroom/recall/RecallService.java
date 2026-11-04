@@ -43,6 +43,7 @@ public class RecallService {
     private static final String ID = "(R-\\d{8}-\\d+)";
     private static final Pattern APPROVE = Pattern.compile("(?i)\\bapprove\\s+" + ID);
     private static final Pattern MATCHED = Pattern.compile("(?i)\\bmatched\\s+" + ID);
+    private static final Pattern ACCEPT = Pattern.compile("(?i)\\baccept\\s+" + ID + "\\s+store=([\\w-]+)\\s+(\\S+)");
     private static final Pattern REPORT = Pattern.compile("(?i)\\b(confirm(?:ed)?|recheck|mismatch)\\s+" + ID + "\\s+store=([\\w-]+)\\s*(.*)", Pattern.DOTALL);
     private static final Pattern SCAN = Pattern.compile("(?i)^\\s*(?:scan|check)(?:\\s+feeds?)?\\s*(.*)$", Pattern.DOTALL);
     private static final Pattern STATUS = Pattern.compile("(?i)^\\s*status\\b\\s*" + ID + "?");
@@ -95,6 +96,8 @@ public class RecallService {
         Matcher match;
         if ((match = APPROVE.matcher(text)).find()) {
             approve(m, match.group(1).toUpperCase(Locale.ROOT));
+        } else if ((match = ACCEPT.matcher(text)).find()) {
+            acceptProbable(m, match.group(1).toUpperCase(Locale.ROOT), match.group(2).toLowerCase(Locale.ROOT), match.group(3));
         } else if ((match = MATCHED.matcher(text)).find()) {
             matched(m, match.group(1).toUpperCase(Locale.ROOT));
         } else if ((match = REPORT.matcher(text)).find()) {
@@ -358,12 +361,49 @@ public class RecallService {
         }
         s.confirmedBatches.addAll(batches);
         recall.note(s.storeName + " photo-checked " + String.join(", ", batches) + " (" + m.senderName() + "): " + details);
+        closeStoreIfDone(recall, s, m.roomId());
+    }
+
+    /**
+     * The QA Head settles a "probable" line (our stock record says APRCT-25O1, the strip says
+     * APRCT-2501): a person decides it is the flagged batch, so it counts as off the shelf.
+     */
+    void acceptProbable(RoomMessage m, String id, String storeId, String batch) {
+        Optional<Recall> found = store.find(id);
+        if (found.isEmpty() || !found.get().stores.containsKey(storeId)) {
+            api.post(m.roomId(), "I don't have an order for store `" + storeId + "` in " + id + ".");
+            return;
+        }
+        Recall recall = found.get();
+        ApprovalGate.Decision decision = gate.checkQaDecision(m, hqRoomId);
+        if (!decision.allowed()) {
+            recall.note("Refused a QA decision from " + m.senderName() + " (`" + m.sender() + "`): " + decision.reason() + ".");
+            save(recall);
+            api.post(m.roomId(), "⛔ **Not accepted.** " + m.senderName() + ", " + decision.reason() + ". The attempt is in the recall log.");
+            return;
+        }
+        StoreOrder s = recall.stores.get(storeId);
+        Optional<StoreOrder.Line> line = s.lines.stream()
+                .filter(l -> l.batch().equalsIgnoreCase(batch) && nz(l.match()).startsWith("probable")).findFirst();
+        if (recall.state != Recall.State.IN_STORES || line.isEmpty()) {
+            api.post(m.roomId(), "There is no open probable line " + batch + " for " + s.storeName + " in " + id + ".");
+            return;
+        }
+        s.confirmedBatches.add(line.get().batch());
+        recall.note(m.senderName() + " (QA Head) accepted " + line.get().batch() + " at " + s.storeName
+                + " as a stock-record typo for the flagged batch; its strips are off the shelf.");
+        closeStoreIfDone(recall, s, m.roomId());
+    }
+
+    /** Marks a store clear once every batch is checked, and closes the recall when every store is. */
+    private void closeStoreIfDone(Recall recall, StoreOrder s, String fallbackRoom) {
+        String hq = hqRoomId != null ? hqRoomId : fallbackRoom;
         if (!s.allBatchesConfirmed()) {
             s.status = StoreOrder.Status.ORDERED;
             save(recall);
             List<String> waiting = s.lines.stream().map(StoreOrder.Line::batch).filter(b -> !s.confirmedBatches.contains(b)).toList();
-            api.post(hq, "📸 **" + id + ": " + s.storeName + "** checked " + String.join(", ", batches) + " ("
-                    + s.confirmedBatches.size() + "/" + s.lines.size() + " batches). Still waiting on " + String.join(", ", waiting) + ".");
+            api.post(hq, "📸 **" + recall.id + ": " + s.storeName + "** " + s.confirmedBatches.size() + "/" + s.lines.size()
+                    + " batches checked. Still waiting on " + String.join(", ", waiting) + ".");
             return;
         }
         s.status = StoreOrder.Status.CONFIRMED;
@@ -375,11 +415,11 @@ public class RecallService {
             recall.note("Closed: every affected store confirmed.");
         }
         save(recall);
-        api.post(hq, "✅ **" + id + ": " + s.storeName + " is clear.** Every batch photo-checked (" + done + "/" + recall.stores.size() + " stores done).");
+        api.post(hq, "✅ **" + recall.id + ": " + s.storeName + " is clear.** Every batch checked (" + done + "/" + recall.stores.size() + " stores done).");
         if (recall.state == Recall.State.CLOSED) {
             int units = recall.stores.values().stream().mapToInt(StoreOrder::units).sum();
-            api.post(hq, "🏁 **" + id + " closed.** " + units + " units are off the shelves in " + recall.stores.size()
-                    + " stores, each with photo confirmation. The full trail is in the `recall-log` document.\n\n@"
+            api.post(hq, "🏁 **" + recall.id + " closed.** " + units + " units are off the shelves in " + recall.stores.size()
+                    + " stores, each batch confirmed. The full trail is in the `recall-log` document.\n\n@"
                     + props.agents().comms() + " the shelves are clear; please finalise the patient notices for the pharmacist to send.");
         }
     }
@@ -406,7 +446,8 @@ public class RecallService {
                 + "• `" + me + " scan latest` (or `scan Sep-2026`, `scan openfda 30`) to open a recall from a regulator's list\n"
                 + "• `" + me + " status` to see open recalls\n"
                 + "• `" + me + " whoami` to see the id Switch gives your account\n"
-                + "• `" + me + " approve R-…` to release stop-sale orders (QA Head only)";
+                + "• `" + me + " approve R-…` to release stop-sale orders (QA Head only)\n"
+                + "• `" + me + " accept R-… store=<id> <batch>` to settle a probable line as a stock-record typo (QA Head only)";
     }
 
     private void save(Recall recall) {

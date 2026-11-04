@@ -1,7 +1,7 @@
 # Demo video script (about 2:45)
 
 Setup before recording:
-- Run `deploy/reset-demo.sh` on the VM. Then send `!reset` in `#recall-hq`, `#store-pune` and the Telegram store group, so the agents start fresh sessions.
+- Run `deploy/reset-demo.sh` on the VM. Then send `!reset-all-agents` in `#recall-hq`, `#store-pune` and the Telegram store group, so the agents start fresh sessions.
 - Open Switch Console with `#recall-hq` on screen.
 - Keep the phone with the Telegram store group in hand. Its screen is mirrored, or filmed beside the laptop.
 - Have printed or on-screen strips for Andheri's batches (`APRCT-2501`, `IBK-2601`, `FMT26015SL` in `docs/demo-props/`), or real strips.

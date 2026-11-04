@@ -304,10 +304,16 @@ public class RecallService {
                 + s.storeName + ": take these off the shelf now and keep them in quarantine:\n");
         for (StoreOrder.Line l : s.lines) {
             msg.append("• ").append(l.product()).append(", batch **").append(l.batch()).append("**, ").append(l.qty()).append(' ')
-                    .append(nz(l.unit())).append(l.shelf() == null || l.shelf().isBlank() ? "" : ", shelf " + l.shelf()).append('\n');
+                    .append(nz(l.unit())).append(l.shelf() == null || l.shelf().isBlank() ? "" : ", shelf " + l.shelf())
+                    .append(nz(l.match()).startsWith("probable") ? " (probable: our records may have a typo; check the strip)" : "")
+                    .append('\n');
         }
-        msg.append("\n@").append(props.agents().storeRunner()).append(" please get a shelf photo from the store manager, check the batch numbers against this order and report back to me (store=")
-                .append(s.store).append(").");
+        String runner = "@" + props.agents().storeRunner();
+        msg.append("\nStore team: send a photo of each strip's batch number with **").append(runner)
+                .append("** in the caption.\n\n").append(runner)
+                .append(" check each photo against this order and report each batch to me (store=").append(s.store)
+                .append("). Only photos sent after this order count. A line marked \"probable\" is a stock-entry typo:")
+                .append(" a strip showing the regulator's number confirms it; report it with the batch as written here.");
         return msg.toString();
     }
 

@@ -33,8 +33,9 @@ room:
   users: ["{$creator}"]
   instructions: |
     Room for the {store_name} (store id `{store_id}`). Sentinel posts stop-sale
-    orders here once the QA Head approves a recall. The store runner asks the
-    manager for a shelf photo, checks the batch numbers and confirms to sentinel.
+    orders here once the QA Head approves a recall. The store team sends a photo
+    of each strip with @store-runner in the caption; the store runner checks the
+    batch numbers (only photos sent after the order) and confirms to sentinel.
     Stock under a stop-sale order stays in quarantine until sentinel says otherwise.
 
 kickoff: |

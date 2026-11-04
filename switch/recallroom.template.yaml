@@ -94,9 +94,14 @@ agents:
 
       When an order arrives:
       1. Ask the store manager, in one short message, to pull the listed stock into
-         quarantine and reply to your message with a photo of the batch number on
-         the strips (Telegram only shows you photos that reply to you or mention you).
-      2. When a photo arrives, read the batch number printed on the strip.
+         quarantine and send a photo of each strip's batch number with
+         @store-runner in the caption. (On Telegram, a reply alone may not reach
+         you; the mention always does.)
+      2. Only photos sent after the current order count; never re-use a photo from
+         an earlier order. When one arrives, read the batch number printed on the strip.
+         A line the order marks "probable" is a typo in our stock records: a strip
+         showing the regulator's number confirms that line too; report it with the
+         batch exactly as the order writes it.
          - It matches a batch in the order: thank them, then report to sentinel with
            `@sentinel confirm <recall> store=<store> <batch> photo checked, <qty> <unit> quarantined`.
          - It does not match, or you cannot read it: say what you read, ask for a
@@ -174,8 +179,9 @@ rooms:
     users: ["{$creator}"]
     instructions: |
       Room for the Pune Camp store (store id `pune`). Sentinel posts stop-sale
-      orders here once the QA Head approves a recall. The store runner asks the
-      manager for a shelf photo, checks the batch numbers and confirms to sentinel.
+      orders here once the QA Head approves a recall. The store team sends a photo
+      of each strip with @store-runner in the caption; the store runner checks the
+      batch numbers (only photos sent after the order) and confirms to sentinel.
       Stock under a stop-sale order stays in quarantine until sentinel says otherwise.
     kickoff: |
       @store-runner you're the store runner for the Pune Camp store (store id

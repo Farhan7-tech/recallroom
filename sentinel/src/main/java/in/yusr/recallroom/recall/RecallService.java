@@ -327,16 +327,32 @@ public class RecallService {
             api.post(hq, "⚠️ **" + id + ": " + s.storeName + " is rechecking.** " + details);
             return;
         }
+        List<String> batches = s.batchesIn(details);
+        if (batches.isEmpty()) {
+            api.post(m.roomId(), "Which batch was that? Report one of " + s.lines.stream().map(StoreOrder.Line::batch).toList()
+                    + " in the confirmation, exactly as written in the order.");
+            return;
+        }
+        s.confirmedBatches.addAll(batches);
+        recall.note(s.storeName + " photo-checked " + String.join(", ", batches) + " (" + m.senderName() + "): " + details);
+        if (!s.allBatchesConfirmed()) {
+            s.status = StoreOrder.Status.ORDERED;
+            save(recall);
+            List<String> waiting = s.lines.stream().map(StoreOrder.Line::batch).filter(b -> !s.confirmedBatches.contains(b)).toList();
+            api.post(hq, "📸 **" + id + ": " + s.storeName + "** checked " + String.join(", ", batches) + " ("
+                    + s.confirmedBatches.size() + "/" + s.lines.size() + " batches). Still waiting on " + String.join(", ", waiting) + ".");
+            return;
+        }
         s.status = StoreOrder.Status.CONFIRMED;
         s.confirmedAt = Instant.now();
-        recall.note(s.storeName + " confirmed its shelves are clear (" + m.senderName() + "): " + details);
+        recall.note(s.storeName + " confirmed every batch is off the shelf.");
         long done = recall.storesConfirmed();
         if (done == recall.stores.size()) {
             recall.state = Recall.State.CLOSED;
             recall.note("Closed: every affected store confirmed.");
         }
         save(recall);
-        api.post(hq, "📸 **" + id + ": " + s.storeName + " confirmed** (" + done + "/" + recall.stores.size() + " stores). " + details);
+        api.post(hq, "✅ **" + id + ": " + s.storeName + " is clear.** Every batch photo-checked (" + done + "/" + recall.stores.size() + " stores done).");
         if (recall.state == Recall.State.CLOSED) {
             int units = recall.stores.values().stream().mapToInt(StoreOrder::units).sum();
             api.post(hq, "🏁 **" + id + " closed.** " + units + " units are off the shelves in " + recall.stores.size()

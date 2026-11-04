@@ -27,11 +27,12 @@ final class RecallLog {
                         .append(" (`").append(r.approvedById).append("`)\n");
             }
             if (!r.stores.isEmpty()) {
-                md.append("\n| Store | Batches | Units | Status | Confirmed |\n|---|---|---|---|---|\n");
+                md.append("\n| Store | Batches | Units | Photo-checked | Status | Cleared |\n|---|---|---|---|---|---|\n");
                 for (StoreOrder s : r.stores.values()) {
                     md.append("| ").append(s.storeName).append(" | ")
                             .append(String.join(", ", s.lines.stream().map(StoreOrder.Line::batch).toList())).append(" | ")
-                            .append(s.units()).append(" | ").append(s.status.name().toLowerCase().replace('_', ' ')).append(" | ")
+                            .append(s.units()).append(" | ").append(s.confirmedBatches.size()).append('/').append(s.lines.size()).append(" | ")
+                            .append(s.status.name().toLowerCase().replace('_', ' ')).append(" | ")
                             .append(s.confirmedAt == null ? "" : TIME.format(s.confirmedAt)).append(" |\n");
                 }
             }

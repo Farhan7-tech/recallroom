@@ -34,13 +34,21 @@ public class StoreOrder {
     }
 
     /**
-     * Order lines whose batch number appears in a report. Compared as strict keys, so APRCT-2501 and
-     * APRCT-25O1 (a letter O) stay different batches: each needs its own photo.
+     * Order lines whose batch number a report names as a whole token. Tokens split on spaces and
+     * punctuation but keep '-' and '/', which batch numbers use, and are compared as strict keys for
+     * equality: APRCT-2501 and APRCT-25O1 (a letter O) stay different batches, each needing its own
+     * photo, and "CHPLT13460" never counts as CHPLT1346.
      */
     public List<String> batchesIn(String report) {
-        String text = " " + report.toUpperCase().replaceAll("[^A-Z0-9]+", " ") + " ";
+        Set<String> tokens = new LinkedHashSet<>();
+        for (String token : report.split("[^A-Za-z0-9/-]+")) {
+            String key = BatchKeys.strict(token);
+            if (!key.isEmpty()) {
+                tokens.add(key);
+            }
+        }
         return lines.stream().map(Line::batch)
-                .filter(b -> text.contains(" " + BatchKeys.strict(b) + " ") || text.contains(" " + b.toUpperCase().replaceAll("[^A-Z0-9]+", " ") + " "))
+                .filter(b -> tokens.contains(BatchKeys.strict(b)))
                 .distinct()
                 .toList();
     }

@@ -15,6 +15,13 @@ class StoreOrderTest {
     }
 
     @Test
+    void onlyAWholeBatchNumberCounts() {
+        assertThat(pune.batchesIn("CHPLT13460 checked")).isEmpty();
+        assertThat(pune.batchesIn("XCHPLT1346 checked")).isEmpty();
+        assertThat(pune.batchesIn("batch: CHPLT1346. done")).containsExactly("CHPLT1346");
+    }
+
+    @Test
     void aZeroAndALetterOAreDifferentBatches() {
         assertThat(pune.batchesIn("APRCT-25O1 photo checked")).containsExactly("APRCT-25O1");
         assertThat(pune.batchesIn("APRCT-2501 photo checked")).containsExactly("APRCT-2501");

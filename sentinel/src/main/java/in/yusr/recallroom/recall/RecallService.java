@@ -69,11 +69,16 @@ public class RecallService {
      * which room-scoped operations such as the log document need.
      */
     public synchronized void onConnected() {
-        findRoom(props.rooms().hq()).ifPresentOrElse(id -> {
-            hqRoomId = id;
-            api.op("connect_to_room", Map.of("room_id", id, "include_general_instructions", false));
-            refreshLog();
-        }, () -> log.warn("Sentinel is not in a room called {} yet; invite it there", props.rooms().hq()));
+        // Resolved once: being invited to another room later must never move HQ.
+        if (hqRoomId == null) {
+            findRoom(props.rooms().hq()).ifPresent(id -> hqRoomId = id);
+        }
+        if (hqRoomId == null) {
+            log.warn("Sentinel is not in a room called {} yet; invite it there", props.rooms().hq());
+            return;
+        }
+        api.op("connect_to_room", Map.of("room_id", hqRoomId, "include_general_instructions", false));
+        refreshLog();
     }
 
     public void onMessage(RoomMessage m) {
@@ -177,7 +182,7 @@ public class RecallService {
     // ---- 2. the matcher reports what is on our shelves ---------------------------------------
 
     void matched(RoomMessage m, String id) {
-        if (!fromAgent(m, props.agents().matcher()) || !m.roomId().equals(hqRoomId)) {
+        if (!looksLikeAgent(m, props.agents().matcher()) || !m.roomId().equals(hqRoomId)) {
             api.post(m.roomId(), "Only @" + props.agents().matcher() + " reports matches, in the HQ room. Ignored.");
             return;
         }
@@ -190,6 +195,11 @@ public class RecallService {
         Recall recall = found.get();
         if (recall.state != Recall.State.MATCHING) {
             api.post(m.roomId(), id + " is already past matching (" + RecallLog.label(recall.state) + "); its impact table can't change now.");
+            return;
+        }
+        // Last, once everything else holds, so a message that would be refused anyway can never set the pin.
+        if (!fromAgent(m, props.agents().matcher())) {
+            api.post(m.roomId(), "That isn't the @" + props.agents().matcher() + " I work with. Ignored.");
             return;
         }
         recall.stores.clear();
@@ -295,13 +305,17 @@ public class RecallService {
         Recall recall = found.get();
         StoreOrder s = recall.stores.get(storeId);
         // Only the store runner, in the room the order went to, while the order is open.
-        if (!fromAgent(m, props.agents().storeRunner()) || !m.roomId().equals(s.roomId)) {
+        if (!looksLikeAgent(m, props.agents().storeRunner()) || !m.roomId().equals(s.roomId)) {
             api.post(m.roomId(), "Only @" + props.agents().storeRunner() + " in " + s.storeName + "'s room can report on its order. Ignored.");
             return;
         }
         if (recall.state != Recall.State.IN_STORES
                 || (s.status != StoreOrder.Status.ORDERED && s.status != StoreOrder.Status.RECHECK)) {
             api.post(m.roomId(), "There is no open order for " + s.storeName + " in " + id + ".");
+            return;
+        }
+        if (!fromAgent(m, props.agents().storeRunner())) {
+            api.post(m.roomId(), "That isn't the @" + props.agents().storeRunner() + " I work with. Ignored.");
             return;
         }
         s.lastReport = details;

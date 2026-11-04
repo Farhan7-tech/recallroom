@@ -48,6 +48,6 @@ class RoomLookupTest {
     }
 
     private static RoomMessage msg(String sender, String name, String onBehalfOf) {
-        return new RoomMessage("r2", "m", null, sender, name, null, onBehalfOf, null, "", true, List.of());
+        return new RoomMessage("r2", "m", null, sender, name, null, onBehalfOf, null, "", true, List.of(), 0L);
     }
 }

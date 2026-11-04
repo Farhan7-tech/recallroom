@@ -137,6 +137,36 @@ public class RecallStore {
         write(dataDir.resolve("recall-log-document-id"), id);
     }
 
+    /** When sentinel last handled a message in a room (epoch ms), so a reconnect can spot gaps. */
+    public synchronized Optional<Long> lastHandled(String roomId) {
+        String v = readProperties("last-handled.properties").getProperty(roomId);
+        return v == null ? Optional.empty() : Optional.of(Long.parseLong(v));
+    }
+
+    public synchronized void markHandled(String roomId, long timestamp) {
+        Properties p = readProperties("last-handled.properties");
+        long previous = Long.parseLong(p.getProperty(roomId, "0"));
+        if (timestamp > previous) {
+            p.setProperty(roomId, Long.toString(timestamp));
+            StringBuilder text = new StringBuilder();
+            p.forEach((k, v) -> text.append(k).append('=').append(v).append('\n'));
+            write(dataDir.resolve("last-handled.properties"), text.toString());
+        }
+    }
+
+    private Properties readProperties(String name) {
+        Properties p = new Properties();
+        Path file = dataDir.resolve(name);
+        if (Files.exists(file)) {
+            try (Reader in = Files.newBufferedReader(file)) {
+                p.load(in);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+        return p;
+    }
+
     /** Helper agent name to the Switch sender id it is pinned to (data/agent-ids.properties, editable by the operator). */
     public synchronized Map<String, String> agentIds() {
         Path file = dataDir.resolve("agent-ids.properties");

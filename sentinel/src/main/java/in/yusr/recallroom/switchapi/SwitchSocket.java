@@ -126,6 +126,7 @@ public class SwitchSocket {
                     sending = sending.thenCompose(previous -> ws.sendText(pong, true));
                 }
                 case "connection_state" -> {
+                    log.info("connection_state: {}", abbreviate(data.toString()));
                     generation = data.path("generation").asLong(-1);
                     if (data.has("cursor")) {
                         cursor.accumulateAndGet(data.path("cursor").asLong(), Math::max);
@@ -136,6 +137,8 @@ public class SwitchSocket {
                 }
                 case "message" -> {
                     RoomMessage message = RoomMessage.from(data);
+                    log.info("Message #{} in room {} from {} (addressed={}): {}", frame.path("id").asLong(), message.roomId(),
+                            message.senderName(), message.addressed(), abbreviate(message.body()));
                     handlers.submit(() -> {
                         try {
                             onMessage.accept(message);
@@ -157,8 +160,13 @@ public class SwitchSocket {
                     log.warn("Switch reports a gap in the event stream: {}", data.path("reason").asString(""));
                     cursor.set(data.path("resumed_at").asLong(cursor.get()));
                 }
-                default -> log.debug("Switch event {}", event);
+                default -> log.info("Switch event {}: {}", event, abbreviate(data.toString()));
             }
+        }
+
+        private static String abbreviate(String s) {
+            String one = s == null ? "" : s.replaceAll("\\s+", " ");
+            return one.length() > 120 ? one.substring(0, 120) + "…" : one;
         }
 
         @Override

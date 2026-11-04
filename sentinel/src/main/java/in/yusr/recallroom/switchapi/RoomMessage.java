@@ -24,7 +24,8 @@ public record RoomMessage(
         String senderRole,
         String body,
         boolean addressed,
-        List<String> attachments) {
+        List<String> attachments,
+        long timestamp) {
 
     static RoomMessage from(JsonNode data) {
         JsonNode p = data.path("payload");
@@ -43,7 +44,8 @@ public record RoomMessage(
                 text(p, "sender_role"),
                 p.path("body").asString(""),
                 p.path("addressed").asBoolean(false),
-                List.copyOf(files));
+                List.copyOf(files),
+                p.path("timestamp").asLong(System.currentTimeMillis()));
     }
 
     private static String text(JsonNode node, String field) {

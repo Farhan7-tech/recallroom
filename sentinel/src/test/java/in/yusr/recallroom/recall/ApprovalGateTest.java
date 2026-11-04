@@ -75,6 +75,6 @@ class ApprovalGateTest {
 
     private static RoomMessage message(String sender, String name, String onBehalfOf, String room) {
         return new RoomMessage(room, "m1", null, sender, name, null, onBehalfOf, "owner",
-                "@sentinel approve R-20261104-1", true, List.of());
+                "@sentinel approve R-20261104-1", true, List.of(), 0L);
     }
 }

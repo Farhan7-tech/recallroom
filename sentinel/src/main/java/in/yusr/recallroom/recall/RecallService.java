@@ -86,12 +86,62 @@ public class RecallService {
         }
         api.op("connect_to_room", Map.of("room_id", hqRoomId, "include_general_instructions", false));
         refreshLog();
+        // After the socket has replayed what it can, look for anything still unanswered.
+        logTimer.schedule(this::reportMissed, 10, TimeUnit.SECONDS);
+    }
+
+    /**
+     * Messages to sentinel that never arrived as events, such as one sent while it was restarting.
+     * History lacks {@code on_behalf_of}, so nothing is acted on from it: an approval must never
+     * come from a replay. Sentinel says what it missed and asks for it to be sent again.
+     */
+    void reportMissed() {
+        Instant floor = Instant.now().minus(Duration.ofMinutes(30));
+        try {
+            for (Map.Entry<String, String> room : myRooms().entrySet()) {
+                String roomId = room.getValue();
+                Instant since = store.lastHandled(roomId).map(Instant::ofEpochMilli).filter(t -> t.isAfter(floor)).orElse(floor);
+                long handled = since.toEpochMilli();
+                for (JsonNode e : api.history(roomId, since)) {
+                    long at = e.path("timestamp").asLong(0);
+                    String body = e.path("body").asString("");
+                    String name = e.path("sender_name").asString("someone");
+                    if (at <= handled || !opensWithMention(body) || name.equalsIgnoreCase(props.agent().name())) {
+                        continue;
+                    }
+                    api.post(roomId, "⚠️ I was reconnecting and may have missed this from " + name + ": \"" + abbreviate(body)
+                            + "\". Please send it again.");
+                    store.markHandled(roomId, at);
+                    log.warn("Reported a possibly missed message in {} from {}: {}", room.getKey(), name, body);
+                }
+            }
+        } catch (RuntimeException e) {
+            log.warn("Could not check room history for missed messages: {}", e.getMessage());
+        }
+    }
+
+    private boolean opensWithMention(String body) {
+        return body != null && body.trim().toLowerCase(Locale.ROOT).startsWith("@" + props.agent().name().toLowerCase(Locale.ROOT));
+    }
+
+    private static String abbreviate(String s) {
+        String one = s.replaceAll("\\s+", " ").trim();
+        return one.length() > 100 ? one.substring(0, 100) + "…" : one;
     }
 
     public void onMessage(RoomMessage m) {
-        if (!m.addressed()) {
-            return;
+        if (looksLikeAgent(m, props.agent().name())) {
+            return; // our own post coming back
         }
+        if (!m.addressed()) {
+            // Switch decides "addressed". If it ever gets that wrong, a message that opens with our
+            // name is still meant for us; the gate checks who sent it either way.
+            if (!opensWithMention(m.body())) {
+                return;
+            }
+            log.warn("Switch marked a message to me as not addressed; handling it anyway: {}", m.body());
+        }
+        store.markHandled(m.roomId(), m.timestamp());
         String text = MENTION.matcher(m.body()).replaceAll(" ").replaceAll("\\s+", " ").trim();
         Matcher match;
         if ((match = APPROVE.matcher(text)).find()) {

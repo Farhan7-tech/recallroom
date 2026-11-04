@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -106,6 +107,18 @@ public class SwitchApi {
                 .retrieve()
                 .body(String.class);
         return json.readTree(res).path("result");
+    }
+
+    /** Room messages since a time, oldest first: {@code [{sender, sender_name, body, timestamp}]}. */
+    public JsonNode history(String roomId, Instant since) {
+        AgentIdentity me = identity();
+        String res = http.get().uri(b -> b.path("/agents/{id}/rooms/{room}/history")
+                        .queryParam("since", since.toString()).queryParam("limit", 50)
+                        .build(me.agentId(), roomId))
+                .header("Authorization", "Bearer " + me.apiKey())
+                .retrieve()
+                .body(String.class);
+        return json.readTree(res).path("events");
     }
 
     public String url() {

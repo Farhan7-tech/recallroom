@@ -1,0 +1,9 @@
+sku,product,manufacturer,batch,expiry,qty,unit,shelf
+PCM500-K,Paracetamol IP 500 mg Tablets,Konis Pharmaceuticals,APRCT-2501,Apr-2027,60,strips,A3
+PCM500-K,Paracetamol IP 500 mg Tablets,Konis Pharmaceuticals,APRCT-2507,Sep-2027,40,strips,A3
+IBU400-A,Ibuprofen Tablets IP 400 mg,Askon Health Care,IBK-2601,Jan-2029,24,strips,B1
+PAN40,Pansid-40 Tablets (Pantoprazole 40 mg),as printed on strip,TG25-1814A,Sep-2027,30,strips,C2
+MLV-SB,Montelukast Sodium and Levocetirizine Hydrochloride Tablets IP,Shiva Biogenetic Laboratories,FMT26015SL,Mar-2028,18,strips,D4
+AMX500,Amoxicillin Capsules IP 500 mg,Demo Generics (sample stock),AMX-2611,Nov-2028,50,strips,E1
+CTZ10,Cetirizine Tablets IP 10 mg,Demo Generics (sample stock),CTZ-2604,Apr-2028,45,strips,E3
+ORS-L,Oral Rehydration Salts (Lemon),Demo Generics (sample stock),ORS-2608,Aug-2028,80,sachets,F1

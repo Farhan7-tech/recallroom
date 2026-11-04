@@ -1,0 +1,36 @@
+spring:
+  application:
+    name: recallroom-sentinel
+
+server:
+  # Read-only status page; bound to loopback because the VM exposes nothing but SSH.
+  address: 127.0.0.1
+  port: 8099
+
+recallroom:
+  switch:
+    # Switch's agent bridge (the "API URL" Switch Console shows for the server).
+    url: ${SWITCH_URL:http://127.0.0.1:50429}
+    # One-line file holding a Switch registration key; read only on first start.
+    registration-token-file: ${SWITCH_REGISTRATION_TOKEN_FILE:}
+    # Where the agent id, API key and connection id are kept after registering.
+    identity-file: ${RECALLROOM_HOME:.}/data/sentinel-identity.properties
+  agent:
+    name: sentinel
+    display-name: Sentinel
+    description: Watches CDSCO and openFDA recall feeds, opens recalls, and releases stop-sale orders only after the QA Head approves.
+  rooms:
+    hq: recall-hq
+  # Exact Switch sender ids allowed to approve a recall (the QA Head). Ids, never display names.
+  qa-heads: ${RECALLROOM_QA_HEADS:}
+  agents:
+    matcher: matcher
+    comms: comms
+    store-runner: store-runner
+  data-dir: ${RECALLROOM_HOME:.}/data
+  inventory-dir: ${RECALLROOM_HOME:.}/inventory
+  feeds:
+    cdsco-base-url: https://cdscoonline.gov.in/CDSCO
+    openfda-url: https://api.fda.gov/drug/enforcement.json
+    # How often to look for new alerts on its own; 0 turns automatic polling off.
+    poll-minutes: ${RECALLROOM_POLL_MINUTES:0}

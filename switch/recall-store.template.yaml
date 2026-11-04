@@ -1,0 +1,42 @@
+# Adds one more store to RecallRoom: a room on Mattermost (or Slack, Teams,
+# Discord) with sentinel and the store runner in it, ready for stop-sale orders.
+#
+# Also add the store to inventory/stores.json and its stock to
+# inventory/stores/<store_id>.csv so the matcher can see it.
+#
+# A Telegram store works the other way round, because Telegram cannot create
+# chats: make the group in Telegram, add the Switch bot, then in the group send
+#   !invite-agent @store-runner
+#   !invite-agent @sentinel
+# and put the group's title in inventory/stores.json as the store's "room".
+version: 1
+
+params:
+  store_id:
+    type: string
+    description: Short id used in orders and inventory (e.g. thane)
+    pattern: "[a-z][a-z0-9-]*"
+  store_name:
+    type: string
+    description: Name the staff know the store by (e.g. Thane Station store)
+  bridge:
+    type: bridge
+    description: Messaging app the store team uses.
+    default: [$first]
+
+room:
+  name: "store-{store_id}"
+  description: "{store_name}. Stop-sale orders arrive here; the store confirms with shelf photos."
+  bridge: "{bridge}"
+  channel_type: channel_public
+  agents: [sentinel, store-runner]
+  users: ["{$creator}"]
+  instructions: |
+    Room for the {store_name} (store id `{store_id}`). Sentinel posts stop-sale
+    orders here once the QA Head approves a recall. The store runner asks the
+    manager for a shelf photo, checks the batch numbers and confirms to sentinel.
+    Stock under a stop-sale order stays in quarantine until sentinel says otherwise.
+
+kickoff: |
+  @store-runner you're now also the store runner for the {store_name} (store id
+  `{store_id}`). Say hello to the team in one line.

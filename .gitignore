@@ -1,0 +1,16 @@
+# Runtime data written by sentinel and the matcher (alerts, matches, recall records, identity)
+data/*
+!data/README.md
+
+# Build output
+sentinel/target/
+
+# Secrets
+*.env
+!*.env.example
+registration-token
+
+# Editors
+.idea/
+.vscode/
+*.iml

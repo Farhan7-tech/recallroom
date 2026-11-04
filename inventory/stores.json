@@ -1,0 +1,13 @@
+{
+  "andheri": {
+    "name": "Andheri West store",
+    "room": "store-test",
+    "messaging": "Telegram",
+    "note": "Room name as Switch shows it. A Telegram group becomes \"Telegram stores: <group title>\"; sentinel matches on the part after the prefix."
+  },
+  "pune": {
+    "name": "Pune Camp store",
+    "room": "store-pune",
+    "messaging": "Mattermost"
+  }
+}

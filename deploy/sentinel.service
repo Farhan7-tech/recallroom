@@ -1,0 +1,15 @@
+[Unit]
+Description=RecallRoom sentinel (Switch agent: recall feeds and the QA Head approval gate)
+After=network-online.target switch-stack.service
+Wants=network-online.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/recallroom
+EnvironmentFile=/home/ubuntu/.config/recallroom/sentinel.env
+ExecStart=/usr/bin/java -Xmx256m -jar /home/ubuntu/recallroom/sentinel/target/sentinel.jar
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

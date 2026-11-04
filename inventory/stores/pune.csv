@@ -1,0 +1,8 @@
+sku,product,manufacturer,batch,expiry,qty,unit,shelf
+TEL40-C,Telmisartan Tablets IP 40 mg,Cureza Healthcare,CHPLT1346,Jan-2028,30,strips,T2
+PCM500-K,Paracetamol IP 500 mg Tablets,Konis Pharmaceuticals,APRCT-2501,Apr-2027,15,strips,A1
+PCM500-K,Paracetamol IP 500 mg Tablets,Konis Pharmaceuticals,APRCT-25O1,Apr-2027,5,strips,A1
+ACP-V,Aceclofenac & Paracetamol Tablets,VADSP Pharmaceuticals,UT260046,Mar-2028,10,strips,A2
+MCP5-US,Metoclopramide Tablets USP 5 mg (imported),US importer,1028135,Jul-2027,6,bottles,R1
+ATV10,Atorvastatin Tablets IP 10 mg,Demo Generics (sample stock),ATV-2609,Sep-2028,28,strips,T4
+VITC500,Vitamin C Tablets IP 500 mg Chewable,Demo Generics (sample stock),VC-2611,Nov-2028,60,strips,V1

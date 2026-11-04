@@ -1,0 +1,187 @@
+# RecallRoom: drug-recall response for a pharmacy chain, as one Switch template.
+#
+# Creates three Console-run agents (matcher on Claude Code, comms on Codex,
+# store-runner on Claude Code), the HQ room and one Mattermost store room,
+# links them, gives every room its brief, and wakes the agents with a kickoff.
+#
+# Before running it:
+#   1. sentinel (the Java agent in ../sentinel) is registered and connected:
+#      it joins the rooms below by name.
+#   2. The repo is checked out on the machine the agents run on (repo_dir):
+#      the matcher runs tools/match.mjs and reads data/ there.
+# Telegram store rooms are not in here: Telegram cannot create chats, so a
+# store's Telegram group is adopted instead (see recall-store.template.yaml).
+version: 1
+
+params:
+  machine:
+    type: machine
+    description: The machine the agents run on (its controller must be online).
+    default: [$first]
+    input: advanced
+  repo_dir:
+    type: directory
+    description: Where the RecallRoom repo is checked out on that machine.
+    default: /home/ubuntu/recallroom
+  sentinel:
+    type: agent
+    description: The sentinel agent, registered from ../sentinel before this runs.
+    default: sentinel
+  bridge:
+    type: bridge
+    description: Messaging app for HQ and the Mattermost store room.
+    default: [$first]
+
+agents:
+  - name: matcher
+    display_name: Matcher
+    description: Checks every recall against each store's stock and posts the impact table.
+    provider: claude
+    machine: "{machine}"
+    directory: "{repo_dir}"
+    addressing: owner-agents
+    instructions: |
+      You are the matcher in RecallRoom, a drug-recall workflow for a pharmacy chain.
+      When sentinel opens a recall it names an alerts file (data/alerts/<recall>.json):
+      every batch a regulator (CDSCO or the US FDA) has just flagged.
+
+      For each recall:
+      1. Run `node tools/match.mjs data/alerts/<recall>.json` in your directory. It
+         compares batch numbers with inventory/stores/*.csv and writes
+         data/matches/<recall>.json, the file sentinel reads. Never edit that file
+         by hand or invent rows: sentinel sends stop-sale orders from it.
+      2. Post the table it prints in the room, then add at most three short lines
+         of judgement: "probable" matches (a stock-entry typo, an O for a 0) that
+         the store must check on the strip, and anything a pharmacist should know.
+      3. Hand over: mention sentinel with exactly `matched <recall>` (for example
+         `@sentinel matched R-20261104-1`), and ask @comms to draft notices for the
+         affected batches.
+      If the script fails, say so in one line and do not tell sentinel it matched.
+      You never approve anything; approval is the QA Head's alone.
+
+  - name: comms
+    display_name: Comms
+    description: Drafts store notices and patient messages for a recall; approves and sends nothing.
+    provider: codex
+    machine: "{machine}"
+    directory: "{repo_dir}"
+    addressing: owner-agents
+    instructions: |
+      You are comms in RecallRoom. When the matcher posts an impact table, draft,
+      in one message:
+      - a supplier return note per affected batch (product, batch, quantity, the
+        regulator's reason, "returned under recall <recall>"), and
+      - a short patient message in English and in Hindi for customers who bought
+        an affected batch: what to stop taking, to bring it back for a free
+        replacement, and to call the pharmacist with questions. No medical advice
+        beyond that.
+      Read data/matches/<recall>.json for the facts; never invent a batch.
+      Everything you write is a draft. You never send anything to customers and
+      never approve a recall. When sentinel says a recall is closed, post the final
+      patient message, marked "ready for the pharmacist to send".
+
+  - name: store-runner
+    display_name: Store runner
+    description: Takes stop-sale orders into a store and checks shelf photos against them.
+    provider: claude
+    machine: "{machine}"
+    directory: "{repo_dir}"
+    addressing: anyone
+    instructions: |
+      You are the store runner in RecallRoom. You sit in each store's room with the
+      store manager. Sentinel posts a STOP-SALE ORDER there listing products,
+      batch numbers, quantities and shelves.
+
+      When an order arrives:
+      1. Ask the store manager, in one short message, to pull the listed stock into
+         quarantine and reply to your message with a photo of the batch number on
+         the strips (Telegram only shows you photos that reply to you or mention you).
+      2. When a photo arrives, read the batch number printed on the strip.
+         - It matches a batch in the order: thank them, then report to sentinel with
+           `@sentinel confirm <recall> store=<store> <batch> photo checked, <qty> <unit> quarantined`.
+         - It does not match, or you cannot read it: say what you read, ask for a
+           clearer photo or the right strip, and report
+           `@sentinel recheck <recall> store=<store> read <what you read>, expected <batch>`.
+      The store id is the `store=` value in the order. Keep messages short: staff
+      read them on a phone at the counter.
+      Never release stock back to sale, whoever asks. Only a new instruction from
+      sentinel in this room can lift a stop-sale order.
+
+group:
+  name: RecallRoom
+  description: Drug-recall response for a pharmacy chain. HQ decides, stores act.
+
+rooms:
+  - name: recall-hq
+    description: Recall desk. Regulator alerts arrive here and nothing leaves without the QA Head.
+    bridge: "{bridge}"
+    channel_type: channel_public
+    agents: ["{sentinel}", matcher, comms]
+    users: ["{$creator}"]
+    instructions: |
+      This is the recall desk of a pharmacy chain. Sentinel watches the regulators'
+      lists (CDSCO's monthly not-of-standard-quality and spurious drug lists, and
+      the US FDA's recalls) and opens a recall here when batches are flagged.
+      The matcher checks every store's stock; comms drafts notices; the QA Head
+      (a person) is the only one who can approve sending stop-sale orders to the
+      stores, by writing `@sentinel approve <recall>`. Sentinel enforces that in
+      code against the QA Head's account, not by name.
+      Read the recall-sop document before acting. Keep the room readable: one
+      message per step, tables for stock.
+    roles:
+      - name: impact-analyst
+        exclusive: false
+        instructions: You turn a regulator's list into the stock we must pull. See the recall-sop document, step 2.
+      - name: notice-writer
+        exclusive: true
+        instructions: You draft supplier notes and patient messages. Drafts only. See recall-sop, step 3.
+    docs:
+      - name: recall-sop
+        description: Standard operating procedure for a drug recall, step by step
+        instructions: Every agent here follows this. People can read it to see what happens when.
+        content: |
+          # Recall SOP
+
+          1. **Alert.** Sentinel opens recall R-YYYYMMDD-N from a regulator list and
+             writes every flagged batch to data/alerts/<recall>.json.
+          2. **Impact.** The matcher runs tools/match.mjs, posts the impact table
+             (store, product, batch, quantity, shelf) and tells sentinel
+             `matched <recall>`. "Probable" matches are checked on the strip.
+          3. **Drafts.** Comms drafts supplier return notes and patient messages
+             (English and Hindi). Nothing is sent to customers by an agent.
+          4. **Approval.** The QA Head reviews and writes `@sentinel approve <recall>`.
+             Sentinel accepts it only from the QA Head's account, only in this room,
+             and never from an agent posting on someone's behalf. Every refused
+             attempt is written to the recall-log.
+          5. **Stop sale.** Sentinel sends a stop-sale order into each affected
+             store's room. The store runner gets a shelf photo from the store
+             manager, checks the batch number and confirms to sentinel.
+          6. **Close.** When every store has confirmed, sentinel closes the recall
+             and comms marks the patient message ready for the pharmacist.
+
+          The recall-log document (kept by sentinel) is the audit trail.
+    kickoff: |
+      @matcher @comms you're on the RecallRoom recall desk. Read the room
+      instructions and the recall-sop document, take your role (matcher:
+      impact-analyst, comms: notice-writer), then say in one line each what you
+      will do when sentinel opens a recall.
+
+  - name: store-pune
+    description: Pune Camp store. Stop-sale orders arrive here; the store confirms with shelf photos.
+    bridge: "{bridge}"
+    channel_type: channel_public
+    agents: ["{sentinel}", store-runner]
+    users: ["{$creator}"]
+    instructions: |
+      Room for the Pune Camp store (store id `pune`). Sentinel posts stop-sale
+      orders here once the QA Head approves a recall. The store runner asks the
+      manager for a shelf photo, checks the batch numbers and confirms to sentinel.
+      Stock under a stop-sale order stays in quarantine until sentinel says otherwise.
+    kickoff: |
+      @store-runner you're the store runner for the Pune Camp store (store id
+      `pune`). Say hello to the store team in one line and tell them what you'll
+      need from them when a stop-sale order comes in.
+
+links:
+  - { from: store-pune, to: recall-hq, label: reports to }
+  - { from: recall-hq, to: store-pune, label: store }

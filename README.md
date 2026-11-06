@@ -98,7 +98,7 @@ Take Switch away and nothing is left: no rooms, no agents talking to each other,
 You need:
 - A Switch server with Switch Console. Console's "Run or join a server on a remote host" works well.
 - A Linux or macOS machine for the agents, with Claude Code and Codex signed in. Console on Windows can't run agents locally.
-- Node 20+ and Java 21 on that machine.
+- Node 20+ and a Java 21 JDK on that machine (a JRE runs sentinel but can't build it).
 
 ```bash
 git clone <this repo> ~/recallroom && cd ~/recallroom/sentinel && ./mvnw package   # builds target/sentinel.jar
@@ -109,8 +109,8 @@ git clone <this repo> ~/recallroom && cd ~/recallroom/sentinel && ./mvnw package
    sudo cp deploy/sentinel.service /etc/systemd/system/recallroom-sentinel.service
    sudo systemctl enable --now recallroom-sentinel
    ```
-   Sentinel registers once and keeps its identity in `data/` (ignored by git); you can delete the key file afterwards.
-2. **Create everything else.** Import [`switch/recallroom.template.yaml`](switch/recallroom.template.yaml) in Switch Console (Templates → Import) and run it, choosing the agents' machine and `repo_dir`.
+   Sentinel registers once and keeps its identity in `data/` (ignored by git); you can delete the key file afterwards. The unit and the env example assume user `ubuntu` and the repo at `~/recallroom`; change the paths if yours differ.
+2. **Create everything else.** In Switch Console, use **Import template** with [`switch/recallroom.template.yaml`](switch/recallroom.template.yaml) and run it, choosing the agents' machine and `repo_dir`.
 3. **Set the QA Head.** In `#recall-hq`, send `@sentinel whoami` from the QA Head's account, put that id in `RECALLROOM_QA_HEADS`, and restart sentinel.
 4. **Add a Telegram store (optional).**
    - Create the group in Telegram and add your Switch bot.

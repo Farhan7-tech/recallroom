@@ -1,4 +1,23 @@
-# RecallRoom
+<p align="center">
+  <img src="docs/banner.svg" alt="RecallRoom: a drug-recall desk for pharmacy chains, where AI agents and people work in the same chat rooms." width="100%">
+</p>
+
+<p align="center">
+  <a href="#see-it-run"><b>See it run</b></a> &nbsp;·&nbsp;
+  <a href="#what-recallroom-does">How it works</a> &nbsp;·&nbsp;
+  <a href="#how-switch-is-used-and-why-it-cant-work-without-it">How Switch is used</a> &nbsp;·&nbsp;
+  <a href="#run-it-yourself">Run it yourself</a>
+</p>
+
+<p align="center">
+  <img alt="Built on Switch" src="https://img.shields.io/badge/Built%20on-Switch-14161A">
+  <img alt="Claude Code" src="https://img.shields.io/badge/Claude%20Code-matcher%20%C2%B7%20store--runner-D97757?logo=anthropic&logoColor=white">
+  <img alt="Codex" src="https://img.shields.io/badge/Codex-comms-412991?logo=openai&logoColor=white">
+  <img alt="Java 21, Spring Boot 4" src="https://img.shields.io/badge/Java%2021-Spring%20Boot%204-6DB33F?logo=springboot&logoColor=white">
+  <img alt="Telegram" src="https://img.shields.io/badge/Telegram-store%20room-26A5E4?logo=telegram&logoColor=white">
+  <img alt="Mattermost" src="https://img.shields.io/badge/Mattermost-HQ%20%2B%20store-0058CC?logo=mattermost&logoColor=white">
+  <img alt="Apache-2.0 License" src="https://img.shields.io/badge/License-Apache--2.0-5F5E5A">
+</p>
 
 **When a drug batch fails a government quality test, every pharmacy store that stocks it pulls it off the shelf, and a person signs off at every step.**
 
@@ -26,20 +45,9 @@ At a pharmacy chain, what happens next is mostly nothing:
 
 ## What RecallRoom does
 
-```
- CDSCO / openFDA ──▶ sentinel ──▶ #recall-hq ──▶ matcher (Claude Code) ── impact table
-                                     │               └──▶ comms (Codex) ── supplier + patient drafts
-                                     │
-                     QA Head: "@sentinel approve R-…"   ◀── the only way an order leaves HQ
-                                     │                      (checked in code, against the QA Head's own account)
-                                     ▼
-            #store-pune (Mattermost)       Telegram "store" group (Andheri, on the manager's phone)
-                     │                                  │
-               store-runner (Claude Code) ── asks for a shelf photo, reads the batch number,
-                                              confirms or asks for a recheck ──▶ sentinel
-                                                                                    │
-                                     recall-log document ◀──────────────────────────┘ (audit trail)
-```
+<p align="center">
+  <img src="docs/workflow.svg" alt="How a recall moves: the CDSCO list goes to sentinel, the matcher and comms; everything stops at the QA Head's approval, checked in code, where an approval from a store phone is refused; then the store runner confirms each batch from shelf photos and the recall closes." width="100%">
+</p>
 
 1. **Alert.** Sentinel reads CDSCO's monthly lists (or openFDA) and opens recall `R-20261104-1` in `#recall-hq` with every flagged batch.
 2. **Impact.** The matcher runs `tools/match.mjs` against each store's stock. It posts the impact table plus judgement, such as "APRCT-25O1 has a letter O; check the strip on shelf A1". Then it hands back to sentinel.
@@ -170,3 +178,16 @@ Reused, as the rules allow: CDSCO row parsing and batch-number normalisation fro
 ## Licence
 
 Apache-2.0
+
+<br>
+
+<p align="center">
+  <img src="docs/footer.svg" alt="Built on Switch, for the Flip the Switch hackathon by WeMakeDevs and DevTools Academy. Open source under Apache-2.0." width="100%">
+</p>
+
+<p align="center">
+  <a href="https://github.com/sandbox-quantum/switch">Switch</a> &nbsp;·&nbsp;
+  <a href="https://www.wemakedevs.org/hackathons/switch">Flip the Switch hackathon</a> &nbsp;·&nbsp;
+  <a href="LICENSE">Apache-2.0</a> &nbsp;·&nbsp;
+  Built by <a href="https://github.com/Farhan7-tech">Mohd Farhan</a>
+</p>

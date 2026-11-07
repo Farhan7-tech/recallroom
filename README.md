@@ -3,7 +3,8 @@
 </p>
 
 <p align="center">
-  <a href="#see-it-run"><b>See it run</b></a> &nbsp;·&nbsp;
+  <a href="https://youtu.be/yPmXscUzYI4"><b>Watch the demo</b></a> &nbsp;·&nbsp;
+  <a href="#see-it-run">See it run</a> &nbsp;·&nbsp;
   <a href="#what-recallroom-does">How it works</a> &nbsp;·&nbsp;
   <a href="#how-switch-is-used-and-why-it-cant-work-without-it">How Switch is used</a> &nbsp;·&nbsp;
   <a href="#run-it-yourself">Run it yourself</a>
@@ -17,6 +18,10 @@
   <img alt="Telegram" src="https://img.shields.io/badge/Telegram-store%20room-26A5E4?logo=telegram&logoColor=white">
   <img alt="Mattermost" src="https://img.shields.io/badge/Mattermost-HQ%20%2B%20store-0058CC?logo=mattermost&logoColor=white">
   <img alt="Apache-2.0 License" src="https://img.shields.io/badge/License-Apache--2.0-5F5E5A">
+</p>
+
+<p align="center">
+  <a href="https://youtu.be/yPmXscUzYI4"><img src="docs/watch-demo.svg" alt="Watch the 2:30 demo video on YouTube" width="100%"></a>
 </p>
 
 **When a drug batch fails a government quality test, every pharmacy store that stocks it pulls it off the shelf, and a person signs off at every step.**

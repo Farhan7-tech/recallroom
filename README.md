@@ -54,6 +54,22 @@ At a pharmacy chain, what happens next is mostly nothing:
 5. **Stop sale.** Sentinel sends an order into each affected store's room. On Telegram, the manager replies with a shelf photo. The store runner reads the batch number off the strip and confirms each batch, or asks for a recheck.
 6. **Close.** When every batch in every store is photo-checked, sentinel closes the recall, and comms marks the patient message ready for the pharmacist. The `recall-log` room document is the full audit trail.
 
+## See it run
+
+From the recorded test recall `R-20261106-2`, on CDSCO's real September 2026 list:
+
+**The impact table:** the matcher found 6 batches and 162 units across two stores, including the `APRCT-25O1` stock-entry typo.
+
+![Sentinel's impact table in #recall-hq](docs/screenshots/impact-table.png)
+
+**An approval from the store's Telegram is refused:** the check compares the sender's Switch id, not their name.
+
+![Sentinel refusing an approval sent from Telegram](docs/screenshots/approval-refused.png)
+
+**The recall closes** once every batch in both stores is confirmed by a photo. Comms then posts the final patient message in English and Hindi.
+
+![Recall closed and the final patient drafts](docs/screenshots/recall-closed.png)
+
 ## How Switch is used (and why it can't work without it)
 
 | Switch feature | What RecallRoom does with it |

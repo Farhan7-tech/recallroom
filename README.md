@@ -69,7 +69,7 @@ At a pharmacy chain, what happens next is mostly nothing:
 
 ## See it run
 
-From the recorded test recall `R-20261106-2`, on CDSCO's real September 2026 list:
+From the recorded test recall `R-20261106-2`, on CDSCO's real September 2026 list. The whole run is in the [2:30 demo video](https://youtu.be/yPmXscUzYI4).
 
 **The impact table:** the matcher found 6 batches and 162 units across two stores, including the `APRCT-25O1` stock-entry typo.
 

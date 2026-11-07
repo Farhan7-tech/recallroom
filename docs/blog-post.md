@@ -10,7 +10,10 @@ In September 2026, India's drug regulator, CDSCO, published its monthly list of 
 
 For the WeMakeDevs × DevTools Academy **Flip the Switch** hackathon, I built **RecallRoom**: a recall desk where AI agents and people handle that job together, in the chat apps the chain already uses. This post walks through how it's built on [Switch](https://github.com/sandbox-quantum/switch), with the code and the setup traps I hit, so your first Switch project goes faster than mine did.
 
-Code: `github.com/Farhan7-tech/recallroom`
+- **Code:** [github.com/Farhan7-tech/recallroom](https://github.com/Farhan7-tech/recallroom)
+- **2:30 demo video:** [youtu.be/yPmXscUzYI4](https://youtu.be/yPmXscUzYI4)
+
+![RecallRoom: a drug-recall desk where AI agents and people work in the same chat rooms](https://raw.githubusercontent.com/Farhan7-tech/recallroom/main/docs/screenshots/recall-closed.png)
 
 ## What Switch gives you
 
@@ -162,6 +165,8 @@ if (!qaHeads.contains(message.sender()))       return refuse("only the QA Head c
 if (!message.roomId().equals(hqRoomId))        return refuse("approvals count only in HQ");
 if (recall.state != State.AWAITING_APPROVAL)   return refuse("not waiting for approval");
 ```
+
+![Sentinel refusing an approval sent from the store's Telegram](https://raw.githubusercontent.com/Farhan7-tech/recallroom/main/docs/screenshots/approval-refused.png)
 
 In the live test, a store manager typed `@sentinel approve …` from Telegram. Sentinel refused and wrote the attempt, with the sender id, into the `recall-log` room document. Separately, when I asked the Codex agent to post an approval "for an audit test", it refused on its own and cited the room's procedure. That's nice, but the design doesn't depend on it.
 
